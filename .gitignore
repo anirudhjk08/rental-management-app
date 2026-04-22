@@ -1,0 +1,17 @@
+# Dependencies
+node_modules/
+
+# Environment variables - NEVER commit these
+.env
+
+# Next.js build output
+frontend/.next/
+frontend/out/
+
+# Logs
+*.log
+npm-debug.log*
+
+# OS files
+.DS_Store
+Thumbs.db
