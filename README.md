@@ -1,17 +1,17 @@
-# Rental Management App
+# 🏪 Rental Management App
 
-A full-stack web application to manage rental relationships between Owners and Tenants.
+A full-stack web application to manage rental relationships between **Owners** and **Tenants**.
 
-## Core Features
+## ✨ Core Features
 
-- Email OTP based registration and login (no passwords)
-- Owners create Shops with unique codes; Tenants search and request to join
-- One active Tenant per Shop at a time (exclusive Relations)
-- Real-time 1-on-1 chat per Relation
-- Payment ledger - online (Razorpay) + cash with dual-approval
-- Rent increase proposal system with tenant accept/reject
+- 📧 Email OTP based registration & login (no passwords)
+- 🏪 Owners create Shops with unique codes; Tenants search and request to join
+- 🤝 One active Tenant per Shop at a time (exclusive Relations)
+- 💬 Real-time 1-on-1 chat per Relation
+- 💰 Payment ledger — online (Razorpay) + cash with dual-approval
+- 📈 Rent increase proposal system with tenant accept/reject
 
-## Tech Stack
+## 🛠️ Tech Stack
 
 | Layer | Technology | Reason |
 |---|---|---|
@@ -22,7 +22,7 @@ A full-stack web application to manage rental relationships between Owners and T
 | Payments | Razorpay | India-focused payment gateway |
 | Auth | Custom Email OTP | No third-party lock-in, learning-focused |
 
-## Database ER Diagram
+## 🗄️ Database ER Diagram
 
 ```mermaid
 erDiagram
@@ -107,19 +107,19 @@ erDiagram
     USERS ||--o{ NOTIFICATIONS : "receives"
 ```
 
-## Sprint Roadmap
+## 🗓️ Sprint Roadmap
 
 | Sprint | Feature | Status |
 |---|---|---|
-| Sprint 1 | Project setup + DB migrations + Email OTP Auth | In Progress |
-| Sprint 2 | Shop creation + Search + Join Request flow | Pending |
-| Sprint 3 | Real-time chat per Relation | Pending |
-| Sprint 4 | Payment ledger (cash + online) | Pending |
-| Sprint 5 | Rent increase proposal flow | Pending |
-| Sprint 6 | Notification system | Pending |
-| Sprint 7 | UI polish + Deployment | Pending |
+| Sprint 1 | Project setup + DB migrations + Email OTP Auth | 🔄 In Progress |
+| Sprint 2 | Shop creation + Search + Join Request flow | ⏳ Pending |
+| Sprint 3 | Real-time chat per Relation | ⏳ Pending |
+| Sprint 4 | Payment ledger (cash + online) | ⏳ Pending |
+| Sprint 5 | Rent increase proposal flow | ⏳ Pending |
+| Sprint 6 | Notification system | ⏳ Pending |
+| Sprint 7 | UI polish + Deployment | ⏳ Pending |
 
-## Getting Started
+## 🚀 Getting Started (Local Setup)
 
 ### Prerequisites
 - Node.js v18+
@@ -129,6 +129,7 @@ erDiagram
 ```bash
 cd backend
 npm install
+cp .env.example .env
 npm run dev
 ```
 
