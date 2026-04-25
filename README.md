@@ -112,7 +112,7 @@ erDiagram
 | Sprint | Feature | Status |
 |---|---|---|
 | Sprint 1 | Project setup + DB migrations + Email OTP Auth | ✅ Complete|
-| Sprint 2 | Shop creation + Search + Join Request flow | In progress |
+| Sprint 2 | Shop creation + Search + Join Request flow | ✅ Complete|
 | Sprint 3 | Real-time chat per Relation | ⏳ Pending |
 | Sprint 4 | Payment ledger (cash + online) | ⏳ Pending |
 | Sprint 5 | Rent increase proposal flow | ⏳ Pending |
