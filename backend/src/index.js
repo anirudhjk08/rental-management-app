@@ -11,7 +11,10 @@ app.use(cors());
 
 // Routes
 const authRoutes = require('./routes/authRoutes');
+const shopRoutes = require('./routes/shopRoutes');
+
 app.use('/api/auth', authRoutes);
+app.use('/api/shops', shopRoutes);
 
 // Health check
 app.get('/', (req, res) => {
