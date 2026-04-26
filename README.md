@@ -113,8 +113,8 @@ erDiagram
 |---|---|---|
 | Sprint 1 | Project setup + DB migrations + Email OTP Auth | ✅ Complete|
 | Sprint 2 | Shop creation + Search + Join Request flow | ✅ Complete|
-| Sprint 3 | Real-time chat per Relation | ⏳ Pending |
-| Sprint 4 | Payment ledger (cash + online) | ⏳ Pending |
+| Sprint 3 | Real-time chat per Relation | ✅ Complete|
+| Sprint 4 | Payment ledger (cash + online) | ✅ Complete |
 | Sprint 5 | Rent increase proposal flow | ⏳ Pending |
 | Sprint 6 | Notification system | ⏳ Pending |
 | Sprint 7 | UI polish + Deployment | ⏳ Pending |
