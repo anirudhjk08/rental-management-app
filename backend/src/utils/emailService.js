@@ -35,5 +35,23 @@ const sendOTPEmail = async (toEmail, otp) => {
 
   await transporter.sendMail(mailOptions);
 };
+const sendNotificationEmail = async (toEmail, subject, htmlBody) => {
+  const mailOptions = {
+    from: `"Rental App" <${process.env.EMAIL_USER}>`,
+    to: toEmail,
+    subject: subject,
+    html: `
+      <div style="font-family: Arial, sans-serif; max-width: 500px; margin: auto;">
+        ${htmlBody}
+        <hr style="margin-top: 30px;"/>
+        <p style="color: #888; font-size: 12px;">
+          This is an automated notification from Rental Management App.
+        </p>
+      </div>
+    `,
+  };
 
-module.exports = { sendOTPEmail };
+  await transporter.sendMail(mailOptions);
+};
+
+module.exports = { sendOTPEmail, sendNotificationEmail };

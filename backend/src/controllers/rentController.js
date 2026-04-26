@@ -1,3 +1,4 @@
+const { createNotification } = require('../utils/notificationHelper');
 const pool = require('../db/index');
 
 // ─────────────────────────────────────────
@@ -51,7 +52,27 @@ const proposeRentIncrease = async (req, res) => {
        RETURNING *`,
       [relationId, ownerId, relation.monthly_rent, new_rent, effective_date]
     );
+    const tenantResult = await pool.query(
+      'SELECT email, name FROM users WHERE id = $1',
+      [relation.tenant_id]
+    );
+    const tenant = tenantResult.rows[0];
 
+    await createNotification({
+      userId: relation.tenant_id,
+      type: 'rent_proposal',
+      rent_proposal_id: result.rows[0].id,
+      userEmail: tenant.email,
+      emailSubject: 'New rent increase proposal',
+      emailBody: `
+    <h2>Hello ${tenant.name}!</h2>
+    <p>Your owner has proposed a rent increase.</p>
+    <p>Current rent: <strong>₹${relation.monthly_rent}</strong></p>
+    <p>Proposed rent: <strong>₹${new_rent}</strong></p>
+    <p>Effective date: <strong>${effective_date}</strong></p>
+    <p>Please login to accept or reject this proposal.</p>
+  `,
+    });
     res.status(201).json({
       message: 'Rent increase proposed successfully. Waiting for tenant approval.',
       proposal: result.rows[0],
@@ -123,7 +144,36 @@ const respondToProposal = async (req, res) => {
         [proposal.new_rent, proposal.shop_id]
       );
     }
+    const ownerResult = await pool.query(
+      `SELECT u.email, u.name, u.id as owner_id
+   FROM users u
+   JOIN shops s ON s.owner_id = u.id
+   JOIN relations r ON r.shop_id = s.id
+   WHERE r.id = $1`,
+      [proposal.relation_id]
+    );
 
+    if (ownerResult.rows.length > 0) {
+      const owner = ownerResult.rows[0];
+      await createNotification({
+        userId: owner.owner_id,
+        type: 'rent_proposal',
+        rent_proposal_id: proposalId,
+        userEmail: owner.email,
+        emailSubject: action === 'accept'
+          ? 'Tenant accepted rent increase!'
+          : 'Tenant rejected rent increase',
+        emailBody: `
+      <h2>Hello ${owner.name}!</h2>
+      <p>Your tenant has <strong>${action === 'accept' ? 'accepted' : 'rejected'}</strong>
+         the rent increase proposal.</p>
+      ${action === 'accept'
+            ? `<p>The new rent of <strong>₹${proposal.new_rent}</strong>
+             is now active from ${proposal.effective_date}.</p>`
+            : ''}
+    `,
+      });
+    }
     res.status(200).json({
       message: action === 'accept'
         ? `Rent increase accepted. New rent is ₹${proposal.new_rent} effective ${proposal.effective_date}`

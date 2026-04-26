@@ -1,3 +1,4 @@
+const { createNotification } = require('../utils/notificationHelper');
 const pool = require('../db/index');
 const Razorpay = require('razorpay');
 const crypto = require('crypto');
@@ -62,7 +63,31 @@ const logCashPayment = async (req, res) => {
        RETURNING *`,
       [relationId, amount, tenantId, note, payment_date || new Date()]
     );
+     const ownerResult = await pool.query(
+  `SELECT u.email, u.name, u.id as owner_id
+   FROM users u
+   JOIN shops s ON s.owner_id = u.id
+   JOIN relations r ON r.shop_id = s.id
+   WHERE r.id = $1`,
+  [relationId]
+);
 
+if (ownerResult.rows.length > 0) {
+  const owner = ownerResult.rows[0];
+  await createNotification({
+    userId: owner.owner_id,
+    type: 'payment',
+    payment_id: result.rows[0].id,
+    userEmail: owner.email,
+    emailSubject: 'New cash payment logged',
+    emailBody: `
+      <h2>Hello ${owner.name}!</h2>
+      <p>Your tenant has logged a cash payment of
+         <strong>₹${amount}</strong>.</p>
+      <p>Please login to confirm or reject this payment.</p>
+    `,
+  });
+}
     res.status(201).json({
       message: 'Cash payment logged. Waiting for owner confirmation.',
       payment: result.rows[0],
@@ -128,7 +153,32 @@ const respondToCashPayment = async (req, res) => {
        RETURNING *`,
       [newStatus, ownerId, paymentId]
     );
+const tenantResult = await pool.query(
+  `SELECT u.email, u.name
+   FROM users u
+   JOIN relations r ON r.id = $1
+   WHERE u.id = r.tenant_id`,
+  [payment.relation_id]
+);
 
+if (tenantResult.rows.length > 0) {
+  const tenant = tenantResult.rows[0];
+  await createNotification({
+    userId: payment.initiated_by,
+    type: 'payment',
+    payment_id: paymentId,
+    userEmail: tenant.email,
+    emailSubject: action === 'confirm'
+      ? 'Your payment was confirmed!'
+      : 'Your payment was rejected',
+    emailBody: `
+      <h2>Hello ${tenant.name}!</h2>
+      <p>Your cash payment of <strong>₹${payment.amount}</strong>
+         has been <strong>${action === 'confirm' ? 'confirmed' : 'rejected'}</strong>
+         by your owner.</p>
+    `,
+  });
+}
     res.status(200).json({
       message: action === 'confirm' ? 'Payment confirmed' : 'Payment rejected',
       payment: result.rows[0],

@@ -1,3 +1,4 @@
+const { createNotification } = require('../utils/notificationHelper');
 const pool = require('../db/index');
 const { v4: uuidv4 } = require('uuid');
 
@@ -180,7 +181,26 @@ const joinShop = async (req, res) => {
        RETURNING *`,
       [shopId, tenantId]
     );
+     const ownerResult = await pool.query(
+  `SELECT u.email, u.name, u.id as owner_id
+   FROM users u
+   JOIN shops s ON s.owner_id = u.id
+   WHERE s.id = $1`,
+  [shopId]
+);
+const owner = ownerResult.rows[0];
 
+await createNotification({
+  userId: owner.owner_id,
+  type: 'join_request',
+  userEmail: owner.email,
+  emailSubject: 'New join request for your shop!',
+  emailBody: `
+    <h2>Hello ${owner.name}!</h2>
+    <p>A tenant has requested to join your shop.</p>
+    <p>Login to your dashboard to accept or reject the request.</p>
+  `,
+});
     res.status(201).json({
       message: 'Join request sent successfully. Waiting for owner approval.',
       relation: result.rows[0],
@@ -243,7 +263,25 @@ const respondToJoinRequest = async (req, res) => {
        RETURNING *`,
       [newStatus, startedAt, relationId]
     );
+if (action === 'accept') {
+  const tenantResult = await pool.query(
+    'SELECT email, name FROM users WHERE id = $1',
+    [relation.tenant_id]
+  );
+  const tenant = tenantResult.rows[0];
 
+  await createNotification({
+    userId: relation.tenant_id,
+    type: 'join_request',
+    userEmail: tenant.email,
+    emailSubject: 'Your join request was accepted!',
+    emailBody: `
+      <h2>Great news, ${tenant.name}!</h2>
+      <p>Your request to join the shop has been <strong>accepted</strong>.</p>
+      <p>You can now start communicating with your owner and managing payments.</p>
+    `,
+  });
+}
     res.status(200).json({
       message: action === 'accept' ? 'Tenant accepted successfully' : 'Request rejected',
       relation: result.rows[0],
