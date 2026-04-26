@@ -116,7 +116,7 @@ erDiagram
 | Sprint 3 | Real-time chat per Relation | ✅ Complete|
 | Sprint 4 | Payment ledger (cash + online) | ✅ Complete |
 | Sprint 5 | Rent increase proposal flow | ✅ Complete |
-| Sprint 6 | Notification system | ⏳ Pending |
+| Sprint 6 | Notification system | ✅ Complete  |
 | Sprint 7 | UI polish + Deployment | ⏳ Pending |
 
 ## 🚀 Getting Started (Local Setup)
