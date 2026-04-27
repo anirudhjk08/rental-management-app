@@ -1,4 +1,4 @@
-CREATE TABLE rent_proposals (
+CREATE TABLE IF NOT EXISTS rent_proposals (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
   relation_id UUID NOT NULL REFERENCES relations(id) ON DELETE CASCADE,
   proposed_by UUID NOT NULL REFERENCES users(id),

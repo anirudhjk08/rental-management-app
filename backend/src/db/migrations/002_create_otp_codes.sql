@@ -1,4 +1,4 @@
-CREATE TABLE otp_codes (
+CREATE TABLE IF NOT EXISTS otp_codes (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
   user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
   code VARCHAR(6) NOT NULL,

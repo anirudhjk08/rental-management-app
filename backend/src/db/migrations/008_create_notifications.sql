@@ -1,4 +1,4 @@
-CREATE TABLE notifications (
+CREATE TABLE IF NOT EXISTSnotifications (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
   user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
   type VARCHAR(30) NOT NULL CHECK (type IN ('message', 'payment', 'rent_proposal', 'join_request')),

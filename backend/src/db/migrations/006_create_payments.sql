@@ -1,4 +1,4 @@
-CREATE TABLE payments (
+CREATE TABLE IF NOT EXISTS payments (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
   relation_id UUID NOT NULL REFERENCES relations(id) ON DELETE CASCADE,
   amount DECIMAL(10, 2) NOT NULL,
