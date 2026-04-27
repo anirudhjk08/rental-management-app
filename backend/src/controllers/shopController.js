@@ -1,41 +1,33 @@
-const { createNotification } = require('../utils/notificationHelper');
 const pool = require('../db/index');
-const { v4: uuidv4 } = require('uuid');
+const { createNotification } = require('../utils/notificationHelper');
 
 // ─────────────────────────────────────────
 // Generate unique shop code
 // ─────────────────────────────────────────
 const generateShopCode = async (shopName) => {
-  // Take first 4 letters of shop name, uppercase, remove spaces
   const prefix = shopName.replace(/\s/g, '').substring(0, 4).toUpperCase();
-  
   let code;
   let isUnique = false;
 
-  // Keep generating until we get a unique code
   while (!isUnique) {
     const random = Math.random().toString(36).substring(2, 6).toUpperCase();
     code = `${prefix}_${random}`;
-
     const existing = await pool.query(
       'SELECT id FROM shops WHERE unique_code = $1',
       [code]
     );
-
-    if (existing.rows.length === 0) {
-      isUnique = true;
-    }
+    if (existing.rows.length === 0) isUnique = true;
   }
 
   return code;
 };
 
 // ─────────────────────────────────────────
-// CREATE SHOP (Owner only)
+// CREATE SHOP
 // ─────────────────────────────────────────
 const createShop = async (req, res) => {
   const { name, address, monthly_rent } = req.body;
-  const ownerId = req.user.userId; // comes from JWT middleware
+  const ownerId = req.user.userId;
 
   if (!name || !monthly_rent) {
     return res.status(400).json({ error: 'Name and monthly_rent are required' });
@@ -46,8 +38,7 @@ const createShop = async (req, res) => {
 
     const result = await pool.query(
       `INSERT INTO shops (owner_id, unique_code, name, address, monthly_rent)
-       VALUES ($1, $2, $3, $4, $5)
-       RETURNING *`,
+       VALUES ($1, $2, $3, $4, $5) RETURNING *`,
       [ownerId, uniqueCode, name, address, monthly_rent]
     );
 
@@ -63,7 +54,7 @@ const createShop = async (req, res) => {
 };
 
 // ─────────────────────────────────────────
-// GET MY SHOPS (Owner sees their shops)
+// GET MY SHOPS (Owner)
 // ─────────────────────────────────────────
 const getMyShops = async (req, res) => {
   const ownerId = req.user.userId;
@@ -92,7 +83,35 @@ const getMyShops = async (req, res) => {
 };
 
 // ─────────────────────────────────────────
-// SEARCH SHOP BY CODE (Tenant searches)
+// GET JOINED SHOPS (Tenant)
+// ─────────────────────────────────────────
+const getJoinedShops = async (req, res) => {
+  const tenantId = req.user.userId;
+
+  try {
+    const result = await pool.query(
+      `SELECT s.*, 
+              u.name as owner_name,
+              r.status as relation_status,
+              r.id as relation_id
+       FROM relations r
+       JOIN shops s ON s.id = r.shop_id
+       JOIN users u ON u.id = s.owner_id
+       WHERE r.tenant_id = $1 AND r.status = 'active'
+       ORDER BY r.started_at DESC`,
+      [tenantId]
+    );
+
+    res.status(200).json({ shops: result.rows });
+
+  } catch (err) {
+    console.error('Get joined shops error:', err.message);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+};
+
+// ─────────────────────────────────────────
+// SEARCH SHOP BY CODE
 // ─────────────────────────────────────────
 const searchShop = async (req, res) => {
   const { code } = req.query;
@@ -124,7 +143,7 @@ const searchShop = async (req, res) => {
 };
 
 // ─────────────────────────────────────────
-// JOIN REQUEST (Tenant requests to join)
+// JOIN SHOP (Tenant)
 // ─────────────────────────────────────────
 const joinShop = async (req, res) => {
   const { shopId } = req.body;
@@ -135,7 +154,6 @@ const joinShop = async (req, res) => {
   }
 
   try {
-    // Check shop exists
     const shopResult = await pool.query(
       'SELECT * FROM shops WHERE id = $1',
       [shopId]
@@ -147,15 +165,12 @@ const joinShop = async (req, res) => {
 
     const shop = shopResult.rows[0];
 
-    // Owner cannot join their own shop
     if (shop.owner_id === tenantId) {
       return res.status(400).json({ error: 'You cannot join your own shop' });
     }
 
-    // Check if shop already has an active tenant
     const activeRelation = await pool.query(
-      `SELECT id FROM relations 
-       WHERE shop_id = $1 AND status = 'active'`,
+      `SELECT id FROM relations WHERE shop_id = $1 AND status = 'active'`,
       [shopId]
     );
 
@@ -163,10 +178,8 @@ const joinShop = async (req, res) => {
       return res.status(400).json({ error: 'Shop already has an active tenant' });
     }
 
-    // Check if tenant already has a pending request for this shop
     const pendingRelation = await pool.query(
-      `SELECT id FROM relations 
-       WHERE shop_id = $1 AND tenant_id = $2 AND status = 'pending'`,
+      `SELECT id FROM relations WHERE shop_id = $1 AND tenant_id = $2 AND status = 'pending'`,
       [shopId, tenantId]
     );
 
@@ -174,33 +187,34 @@ const joinShop = async (req, res) => {
       return res.status(400).json({ error: 'You already have a pending request for this shop' });
     }
 
-    // Create relation with pending status
     const result = await pool.query(
       `INSERT INTO relations (shop_id, tenant_id, status)
-       VALUES ($1, $2, 'pending')
-       RETURNING *`,
+       VALUES ($1, $2, 'pending') RETURNING *`,
       [shopId, tenantId]
     );
-     const ownerResult = await pool.query(
-  `SELECT u.email, u.name, u.id as owner_id
-   FROM users u
-   JOIN shops s ON s.owner_id = u.id
-   WHERE s.id = $1`,
-  [shopId]
-);
-const owner = ownerResult.rows[0];
 
-await createNotification({
-  userId: owner.owner_id,
-  type: 'join_request',
-  userEmail: owner.email,
-  emailSubject: 'New join request for your shop!',
-  emailBody: `
-    <h2>Hello ${owner.name}!</h2>
-    <p>A tenant has requested to join your shop.</p>
-    <p>Login to your dashboard to accept or reject the request.</p>
-  `,
-});
+    // Notify owner
+    const ownerResult = await pool.query(
+      `SELECT u.email, u.name, u.id as owner_id
+       FROM users u
+       JOIN shops s ON s.owner_id = u.id
+       WHERE s.id = $1`,
+      [shopId]
+    );
+    const owner = ownerResult.rows[0];
+
+    await createNotification({
+      userId: owner.owner_id,
+      type: 'join_request',
+      userEmail: owner.email,
+      emailSubject: 'New join request for your shop!',
+      emailBody: `
+        <h2>Hello ${owner.name}!</h2>
+        <p>A tenant has requested to join your shop.</p>
+        <p>Login to your dashboard to accept or reject the request.</p>
+      `,
+    });
+
     res.status(201).json({
       message: 'Join request sent successfully. Waiting for owner approval.',
       relation: result.rows[0],
@@ -213,10 +227,10 @@ await createNotification({
 };
 
 // ─────────────────────────────────────────
-// RESPOND TO JOIN REQUEST (Owner accepts/rejects)
+// RESPOND TO JOIN REQUEST (Owner)
 // ─────────────────────────────────────────
 const respondToJoinRequest = async (req, res) => {
-  const { relationId, action } = req.body; // action: 'accept' or 'reject'
+  const { relationId, action } = req.body;
   const ownerId = req.user.userId;
 
   if (!relationId || !action) {
@@ -228,7 +242,6 @@ const respondToJoinRequest = async (req, res) => {
   }
 
   try {
-    // Get the relation and verify the owner owns that shop
     const relationResult = await pool.query(
       `SELECT r.*, s.owner_id 
        FROM relations r
@@ -243,7 +256,6 @@ const respondToJoinRequest = async (req, res) => {
 
     const relation = relationResult.rows[0];
 
-    // Security check — only the shop owner can respond
     if (relation.owner_id !== ownerId) {
       return res.status(403).json({ error: 'Not authorized to respond to this request' });
     }
@@ -252,36 +264,34 @@ const respondToJoinRequest = async (req, res) => {
       return res.status(400).json({ error: 'This request has already been responded to' });
     }
 
-    // Update relation status
     const newStatus = action === 'accept' ? 'active' : 'ended';
     const startedAt = action === 'accept' ? new Date() : null;
 
     const result = await pool.query(
-      `UPDATE relations 
-       SET status = $1, started_at = $2
-       WHERE id = $3
-       RETURNING *`,
+      `UPDATE relations SET status = $1, started_at = $2 WHERE id = $3 RETURNING *`,
       [newStatus, startedAt, relationId]
     );
-if (action === 'accept') {
-  const tenantResult = await pool.query(
-    'SELECT email, name FROM users WHERE id = $1',
-    [relation.tenant_id]
-  );
-  const tenant = tenantResult.rows[0];
 
-  await createNotification({
-    userId: relation.tenant_id,
-    type: 'join_request',
-    userEmail: tenant.email,
-    emailSubject: 'Your join request was accepted!',
-    emailBody: `
-      <h2>Great news, ${tenant.name}!</h2>
-      <p>Your request to join the shop has been <strong>accepted</strong>.</p>
-      <p>You can now start communicating with your owner and managing payments.</p>
-    `,
-  });
-}
+    if (action === 'accept') {
+      const tenantResult = await pool.query(
+        'SELECT email, name FROM users WHERE id = $1',
+        [relation.tenant_id]
+      );
+      const tenant = tenantResult.rows[0];
+
+      await createNotification({
+        userId: relation.tenant_id,
+        type: 'join_request',
+        userEmail: tenant.email,
+        emailSubject: 'Your join request was accepted!',
+        emailBody: `
+          <h2>Great news, ${tenant.name}!</h2>
+          <p>Your request to join the shop has been <strong>accepted</strong>.</p>
+          <p>You can now start communicating with your owner and managing payments.</p>
+        `,
+      });
+    }
+
     res.status(200).json({
       message: action === 'accept' ? 'Tenant accepted successfully' : 'Request rejected',
       relation: result.rows[0],
@@ -294,7 +304,7 @@ if (action === 'accept') {
 };
 
 // ─────────────────────────────────────────
-// GET PENDING REQUESTS (Owner sees pending joins)
+// GET PENDING REQUESTS (Owner)
 // ─────────────────────────────────────────
 const getPendingRequests = async (req, res) => {
   const ownerId = req.user.userId;
@@ -320,11 +330,40 @@ const getPendingRequests = async (req, res) => {
   }
 };
 
+// ─────────────────────────────────────────
+// DELETE SHOP (Owner)
+// ─────────────────────────────────────────
+const deleteShop = async (req, res) => {
+  const { shopId } = req.params;
+  const ownerId = req.user.userId;
+
+  try {
+    const shopResult = await pool.query(
+      'SELECT * FROM shops WHERE id = $1 AND owner_id = $2',
+      [shopId, ownerId]
+    );
+
+    if (shopResult.rows.length === 0) {
+      return res.status(404).json({ error: 'Shop not found or not authorized' });
+    }
+
+    await pool.query('DELETE FROM shops WHERE id = $1', [shopId]);
+
+    res.status(200).json({ message: 'Shop deleted successfully' });
+
+  } catch (err) {
+    console.error('Delete shop error:', err.message);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+};
+
 module.exports = {
   createShop,
   getMyShops,
+  getJoinedShops,
   searchShop,
   joinShop,
   respondToJoinRequest,
   getPendingRequests,
+  deleteShop,
 };
