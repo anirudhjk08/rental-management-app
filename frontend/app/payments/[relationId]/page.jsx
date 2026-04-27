@@ -14,7 +14,9 @@ export default function PaymentsPage() {
 
   const [payments, setPayments] = useState([]);
   const [showCashForm, setShowCashForm] = useState(false);
+  const [showOnlineForm, setShowOnlineForm] = useState(false);
   const [cashForm, setCashForm] = useState({ amount: '', note: '', payment_date: '' });
+  const [onlineAmount, setOnlineAmount] = useState('');
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
   const [pageLoading, setPageLoading] = useState(true);
@@ -62,19 +64,70 @@ export default function PaymentsPage() {
     }
   };
 
+  const handleOnlinePayment = async () => {
+    setError('');
+    try {
+      const res = await api.post('/api/payments/online/create', {
+        relationId,
+        amount: onlineAmount,
+      });
+
+      const { payment, order, key_id } = res.data;
+
+      const options = {
+        key: key_id,
+        amount: order.amount,
+        currency: order.currency,
+        name: 'Rental Management App',
+        description: 'Monthly Rent Payment',
+        order_id: order.id,
+
+        handler: async (response) => {
+          try {
+            await api.post('/api/payments/online/verify', {
+              paymentId: payment.id,
+              razorpay_order_id: response.razorpay_order_id,
+              razorpay_payment_id: response.razorpay_payment_id,
+              razorpay_signature: response.razorpay_signature,
+            });
+            setMessage('Online payment successful! ✅');
+            setShowOnlineForm(false);
+            setOnlineAmount('');
+            fetchPayments();
+          } catch (err) {
+            setError('Payment verification failed. Please contact support.');
+          }
+        },
+
+        prefill: {
+          name: user.name,
+          email: user.email,
+        },
+
+        theme: { color: '#2563eb' },
+      };
+
+      const razorpay = new window.Razorpay(options);
+      razorpay.open();
+
+      razorpay.on('payment.failed', (response) => {
+        setError(`Payment failed: ${response.error.description}`);
+      });
+
+    } catch (err) {
+      setError(err.response?.data?.error || 'Failed to initiate payment');
+    }
+  };
+
   const getStatusColor = (status) => {
     switch (status) {
       case 'confirmed':
-      case 'success':
-        return 'bg-green-100 text-green-600';
+      case 'success': return 'bg-green-100 text-green-600';
       case 'rejected':
-      case 'failed':
-        return 'bg-red-100 text-red-600';
+      case 'failed': return 'bg-red-100 text-red-600';
       case 'pending_approval':
-      case 'initiated':
-        return 'bg-yellow-100 text-yellow-600';
-      default:
-        return 'bg-gray-100 text-gray-600';
+      case 'initiated': return 'bg-yellow-100 text-yellow-600';
+      default: return 'bg-gray-100 text-gray-600';
     }
   };
 
@@ -129,13 +182,22 @@ export default function PaymentsPage() {
           </div>
         )}
 
-        {/* Log Cash Payment Button */}
-        <div className="flex justify-end">
+        {/* Payment Buttons */}
+        <div className="flex justify-end gap-2">
           <button
-            onClick={() => setShowCashForm(!showCashForm)}
-            className="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-blue-700"
+            onClick={() => { setShowCashForm(!showCashForm); setShowOnlineForm(false); }}
+            className={`px-4 py-2 rounded-lg text-sm font-medium border
+              ${isDark
+                ? 'border-gray-600 text-gray-200 hover:bg-gray-700'
+                : 'border-gray-200 text-gray-600 hover:bg-gray-50'}`}
           >
             + Log Cash Payment
+          </button>
+          <button
+            onClick={() => { setShowOnlineForm(!showOnlineForm); setShowCashForm(false); }}
+            className="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-blue-700"
+          >
+            💳 Pay Online
           </button>
         </div>
 
@@ -183,6 +245,40 @@ export default function PaymentsPage() {
           </div>
         )}
 
+        {/* Online Payment Form */}
+        {showOnlineForm && (
+          <div className={`rounded-2xl shadow-sm p-6 space-y-3 ${isDark ? 'bg-gray-800' : 'bg-white'}`}>
+            <h2 className={`font-semibold mb-2 ${isDark ? 'text-white' : 'text-gray-800'}`}>
+              💳 Pay Online via Razorpay
+            </h2>
+            <input
+              type="number"
+              placeholder="Amount (₹)"
+              value={onlineAmount}
+              onChange={(e) => setOnlineAmount(e.target.value)}
+              className={inputClass}
+            />
+            <div className="flex gap-2">
+              <button
+                onClick={handleOnlinePayment}
+                className="flex-1 bg-blue-600 text-white py-2 rounded-lg text-sm font-medium hover:bg-blue-700"
+              >
+                Pay Now
+              </button>
+              <button
+                onClick={() => setShowOnlineForm(false)}
+                className={`flex-1 py-2 rounded-lg text-sm font-medium
+                  ${isDark ? 'bg-gray-600 text-gray-200' : 'bg-gray-200 text-gray-600'}`}
+              >
+                Cancel
+              </button>
+            </div>
+            <p className={`text-xs text-center ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>
+              🔒 Secured by Razorpay — Test mode active
+            </p>
+          </div>
+        )}
+
         {/* Payment History */}
         <div className={`rounded-2xl shadow-sm p-6 ${isDark ? 'bg-gray-800' : 'bg-white'}`}>
           <h2 className={`text-lg font-semibold mb-4 ${isDark ? 'text-white' : 'text-gray-800'}`}>
@@ -227,8 +323,6 @@ export default function PaymentsPage() {
                       <span className={`text-xs px-2 py-1 rounded-full font-medium ${getStatusColor(payment.status)}`}>
                         {payment.status.replace('_', ' ')}
                       </span>
-
-                      {/* Owner can confirm/reject pending cash payments */}
                       {payment.status === 'pending_approval' &&
                        payment.type === 'cash' &&
                        payment.initiated_by !== user.id && (
