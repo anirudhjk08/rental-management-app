@@ -117,7 +117,7 @@ erDiagram
 | Sprint 4 | Payment ledger (cash + online) | ✅ Complete |
 | Sprint 5 | Rent increase proposal flow | ✅ Complete |
 | Sprint 6 | Notification system | ✅ Complete  |
-| Sprint 7 | UI polish + Deployment | ⏳ Pending |
+| Sprint 7 | UI polish + Deployment |✅ Complete  |
 
 ## 🚀 Getting Started (Local Setup)
 
