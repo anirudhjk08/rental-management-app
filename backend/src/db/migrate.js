@@ -5,7 +5,6 @@ const pool = require('./index');
 const runMigrations = async () => {
   const migrationsDir = path.join(__dirname, 'migrations');
   
-  // Read all .sql files and sort them numerically (001, 002, 003...)
   const files = fs.readdirSync(migrationsDir)
     .filter(f => f.endsWith('.sql'))
     .sort();
@@ -20,9 +19,14 @@ const runMigrations = async () => {
       await pool.query(sql);
       console.log(`✓ Ran migration: ${file}`);
     } catch (err) {
-      console.error(`✗ Failed migration: ${file}`);
-      console.error(err.message);
-      process.exit(1);
+      // Skip if table already exists
+      if (err.message.includes('already exists')) {
+        console.log(`→ Skipped (already exists): ${file}`);
+      } else {
+        console.error(`✗ Failed migration: ${file}`);
+        console.error(err.message);
+        process.exit(1);
+      }
     }
   }
 
