@@ -318,30 +318,34 @@ export default function PaymentsPage() {
                           Confirmed by: {payment.confirmed_by_name}
                         </p>
                       )}
-                      
+                      {payment.gateway_ref_id && (
+                        <p className={`text-xs mt-1 ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>
+                          Payment ID: {payment.gateway_ref_id}
+                        </p>
+                      )}
                     </div>
                     <div className="flex flex-col items-end gap-2">
                       <span className={`text-xs px-2 py-1 rounded-full font-medium ${getStatusColor(payment.status)}`}>
                         {payment.status.replace('_', ' ')}
                       </span>
                       {payment.status === 'pending_approval' &&
-                       payment.type === 'cash' &&
-                       payment.initiated_by !== user.id && (
-                        <div className="flex gap-1">
-                          <button
-                            onClick={() => handleRespond(payment.id, 'confirm')}
-                            className="text-xs bg-green-500 text-white px-2 py-1 rounded-lg hover:bg-green-600"
-                          >
-                            Confirm
-                          </button>
-                          <button
-                            onClick={() => handleRespond(payment.id, 'reject')}
-                            className="text-xs bg-red-500 text-white px-2 py-1 rounded-lg hover:bg-red-600"
-                          >
-                            Reject
-                          </button>
-                        </div>
-                      )}
+                        payment.type === 'cash' &&
+                        payment.initiated_by !== user.id && (
+                          <div className="flex gap-1">
+                            <button
+                              onClick={() => handleRespond(payment.id, 'confirm')}
+                              className="text-xs bg-green-500 text-white px-2 py-1 rounded-lg hover:bg-green-600"
+                            >
+                              Confirm
+                            </button>
+                            <button
+                              onClick={() => handleRespond(payment.id, 'reject')}
+                              className="text-xs bg-red-500 text-white px-2 py-1 rounded-lg hover:bg-red-600"
+                            >
+                              Reject
+                            </button>
+                          </div>
+                        )}
                     </div>
                   </div>
                 </div>
