@@ -318,6 +318,7 @@ export default function PaymentsPage() {
                           Confirmed by: {payment.confirmed_by_name}
                         </p>
                       )}
+                      
                     </div>
                     <div className="flex flex-col items-end gap-2">
                       <span className={`text-xs px-2 py-1 rounded-full font-medium ${getStatusColor(payment.status)}`}>
