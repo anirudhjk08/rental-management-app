@@ -1,22 +1,10 @@
-const nodemailer = require('nodemailer');
-const dotenv = require('dotenv');
-dotenv.config();
+const { Resend } = require('resend');
 
-// Transporter is like a configured email client
-// We configure it once and reuse it for all emails
-const transporter = nodemailer.createTransport({
-  host: 'smtp.gmail.com',
-  port: 587,
-  secure: false,
-  auth: {
-    user: process.env.EMAIL_USER,
-    pass: process.env.EMAIL_PASS,
-  },
-});
+const resend = new Resend(process.env.RESEND_API_KEY);
 
 const sendOTPEmail = async (toEmail, otp) => {
-  const mailOptions = {
-    from: `"Rental App" <${process.env.EMAIL_USER}>`,
+  await resend.emails.send({
+    from: 'Rental App <onboarding@resend.dev>',
     to: toEmail,
     subject: 'Your OTP Code - Rental Management App',
     html: `
@@ -29,17 +17,16 @@ const sendOTPEmail = async (toEmail, otp) => {
           ${otp}
         </div>
         <p style="color: #888; margin-top: 16px;">
-          This OTP expires in <strong>10 minutes</strong>. Do not share it with anyone.
+          This OTP expires in <strong>10 minutes</strong>.
         </p>
       </div>
     `,
-  };
-
-  await transporter.sendMail(mailOptions);
+  });
 };
+
 const sendNotificationEmail = async (toEmail, subject, htmlBody) => {
-  const mailOptions = {
-    from: `"Rental App" <${process.env.EMAIL_USER}>`,
+  await resend.emails.send({
+    from: 'Rental App <onboarding@resend.dev>',
     to: toEmail,
     subject: subject,
     html: `
@@ -51,9 +38,7 @@ const sendNotificationEmail = async (toEmail, subject, htmlBody) => {
         </p>
       </div>
     `,
-  };
-
-  await transporter.sendMail(mailOptions);
+  });
 };
 
 module.exports = { sendOTPEmail, sendNotificationEmail };
